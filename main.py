@@ -68,7 +68,7 @@ def split_user(userid):
     return {"username": "", "domain": ""}
 
 
-def write_csv(data, filename):
+def write_user_event_csv(data, filename):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
 
@@ -84,11 +84,97 @@ def write_csv(data, filename):
             user_event_dict.pop("userid")
             writer.writerow(user_event_dict.values())
 
+
+def write_csv(data, filename):
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        first_dict = data[0]
+        writer.writerow(first_dict.keys())  # Write header row
+        for user_event in data:
+            writer.writerow(user_event.values())
+
+
+def get_bookmark(offset, limit):
+    page_bookmark = Bookmark.find().page(offset, limit)
+    bookmark_dict = []
+    for bookmark in page_bookmark:
+        editable_bookmark = bookmark.dict()
+        editable_bookmark["username"] = split_user(editable_bookmark["user"]["userid"])["username"]
+        editable_bookmark.pop("user")
+        result = Result.get(editable_bookmark["result"])
+        editable_result = result.dict()
+        editable_result.pop("pk")
+        editable_bookmark.update(editable_result)
+        bookmark_dict.append(editable_bookmark)
+    return bookmark_dict
+
+
+def get_user_event(offset, limit):
+    page_user_event = UserEvent.find().page(offset, limit)
+    user_event_dict = []
+    for bookmark in page_user_event:
+        editable_bookmark = bookmark.dict()
+        editable_bookmark["username"] = split_user(editable_bookmark["userid"])["username"]
+        editable_bookmark.pop("userid")
+        editable_bookmark["time"] = convert_epoch_milliseconds_to_datetime(editable_bookmark['timestamp'])
+
+        user_event_dict.append(editable_bookmark)
+    return user_event_dict
+
+
+def write_csv(total, filename, func):
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        headered = False
+
+        page_size = 1000
+        times = total // page_size + 1
+
+        for current_page in range(times):
+            results = func(times * current_page, page_size)
+
+            if not headered:
+                writer.writerow(results[0].keys())  # Write header row
+                headered = True
+
+            for result in results:
+                writer.writerow(result.values())
+
+
 if __name__ == "__main__":
     Migrator().run()
 
+    filename = "export_bookmark.csv"
+    total = Bookmark.find().count()
+    write_csv(total, filename, get_bookmark)
+
     filename = "export_user_event.csv"
-    all_user_event = UserEvent.find().all()
+    total = UserEvent.find().count()
+    write_csv(total, filename, get_user_event)
+
+
+    # all_user_event = UserEvent.find().all()
+
+    # all_bookmark = Bookmark.find().all()
+    # print("all count", UserEvent.find().count())
+
+    # data = []
+    # for bookmark in all_bookmark:
+    #     bookmark_dict = bookmark.dict()
+    #     userid = bookmark_dict["user"]["userid"]
+    #     username = split_user(userid)["username"]
+    #     result_detail = Result.find(
+    #         Result.pk == bookmark_dict["result"]
+    #     ).all()[0].dict()
+    #     bookmark_dict["username"] = username
+    #     bookmark_dict.pop("user")
+    #     result_detail.pop("pk")
+    #     bookmark_dict.update(result_detail)
+    #     print("\n", bookmark_dict)
+    #     data.append(bookmark_dict)
+
 
     # conditional export
     #
@@ -105,4 +191,5 @@ if __name__ == "__main__":
     # for user_event in all_user_event:
     #     user_event_dict = user_event.dict()
     #     print(convert_epoch_milliseconds_to_datetime(user_event_dict['timestamp']))
-    write_csv(all_user_event, filename)
+    # write_user_event_csv(all_user_event, filename)
+    # write_csv(data, filename)

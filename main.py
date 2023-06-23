@@ -4,7 +4,9 @@ from pydantic import NonNegativeInt
 from typing import Optional
 import csv
 import datetime
+import json
 import re
+import os
 
 class UserRole(EmbeddedJsonModel):
     class Meta:
@@ -123,17 +125,25 @@ def get_user_event(offset, limit):
     return user_event_dict
 
 
+def get_user_role(offset, limit):
+    page_user_role = UserRole.find().page(offset, limit)
+    user_role_dict = []
+    for user_role in page_user_role:
+        user_role_dict.append(user_role.dict())
+    return user_role_dict
+
+
+# func -> dict
 def write_csv(total, filename, func):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
 
         headered = False
-
         page_size = 1000
-        times = total // page_size + 1
+        offset = 0
 
-        for current_page in range(times):
-            results = func(times * current_page, page_size)
+        while offset < total:
+            results = func(offset, page_size)
 
             if not headered:
                 writer.writerow(results[0].keys())  # Write header row
@@ -141,6 +151,27 @@ def write_csv(total, filename, func):
 
             for result in results:
                 writer.writerow(result.values())
+
+            offset += page_size
+
+
+def write_json(total, filename, func):
+    base_name, extension = os.path.splitext(filename)
+
+    page_size = 1000
+    offset = 0
+
+    bunch = []
+
+    while offset < total:
+        bunch_data = func(offset, page_size) # offset limit
+        for item in bunch_data:
+            bunch.append(item.dict())
+        with open(base_name + "_" + str(offset // page_size + 1) + extension, "w", newline="") as josnfile:
+            json.dump(bunch, josnfile)
+        bunch.clear()
+        offset += page_size
+
 
 
 if __name__ == "__main__":
@@ -153,6 +184,22 @@ if __name__ == "__main__":
     filename = "export_user_event.csv"
     total = UserEvent.find().count()
     write_csv(total, filename, get_user_event)
+
+    filename = "export_bookmark.json"
+    total = Bookmark.find().count()
+    write_json(total, filename, Bookmark.find().page)
+
+    filename = "export_result.json"
+    total = Result.find().count()
+    write_json(total, filename, Result.find().page)
+
+    filename = "export_user_role.json"
+    total = UserRole.find().count()
+    write_json(total, filename, UserRole.find().page)
+
+    filename = "export_user_role.csv"
+    total = UserEvent.find().count()
+    write_csv( total, filename, get_user_role)
 
 
     # all_user_event = UserEvent.find().all()

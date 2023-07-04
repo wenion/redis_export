@@ -149,8 +149,9 @@ def get_rating(offset, limit):
     page_rating = Rating.find().page(offset, limit)
     rating_dict = []
     for rating in page_rating:
-        rating["time"] = datetime.datetime.fromtimestamp(rating['created_timestamp'])
-        rating_dict.append(rating.dict())
+        edit_rating = rating.dict()
+        edit_rating["time"] = datetime.datetime.fromtimestamp(edit_rating['created_timestamp'])
+        rating_dict.append(edit_rating)
     return rating_dict
 
 

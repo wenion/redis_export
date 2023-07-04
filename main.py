@@ -53,6 +53,18 @@ class UserEvent(JsonModel):
     userid: str = Field(index=True)
 
 
+class Rating(JsonModel):
+    class Meta:
+        global_key_prefix = 'h'
+        model_key_prefix = 'Rating'
+    created_timestamp: int = Field(index=True)
+    updated_timestamp: int = Field(index=True)
+    relevance: str = Field(index=True)
+    timeliness: str = Field(index=True)
+    base_url: str = Field(index=True)
+    userid: str = Field(index=True)
+
+
 def convert_epoch_milliseconds_to_datetime(epoch_milliseconds):
     # Convert epoch with milliseconds to datetime object
     dt = datetime.datetime.fromtimestamp(epoch_milliseconds / 1000.0)
@@ -133,6 +145,15 @@ def get_user_role(offset, limit):
     return user_role_dict
 
 
+def get_rating(offset, limit):
+    page_rating = Rating.find().page(offset, limit)
+    rating_dict = []
+    for rating in page_rating:
+        rating["time"] = datetime.datetime.fromtimestamp(rating['created_timestamp'])
+        rating_dict.append(rating.dict())
+    return rating_dict
+
+
 # func -> dict
 def write_csv(total, filename, func):
     with open(filename, 'w', newline='') as csvfile:
@@ -200,6 +221,10 @@ if __name__ == "__main__":
     filename = "export_user_role.csv"
     total = UserEvent.find().count()
     write_csv( total, filename, get_user_role)
+
+    filename = "export_rating.csv"
+    total = Rating.find().count()
+    write_csv( total, filename, get_rating)
 
 
     # all_user_event = UserEvent.find().all()

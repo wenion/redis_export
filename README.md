@@ -1,0 +1,5 @@
+# redis_export
+export the redis data
+
+FT.CONFIG GET MAXSEARCHRESULTS
+FT.CONFIG SET MAXSEARCHRESULTS 1000
